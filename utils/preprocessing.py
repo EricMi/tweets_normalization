@@ -6,18 +6,32 @@ from nltk.tokenize import TweetTokenizer
 from time import time
 
 regexes = {
-    'QUOTES': r'(\"[^\"]{2,}\")|(“[^”]{2,}”)',
-    'URL': r'(https|http):[\S^\"^\”^\']+',
-    'HEAD': r'^(RT|HT|MT) @\w+: ',
-    'UNAME': r'@[\w]+',
-    'EMPHASIX': '(?:\*[^\*]+\*)',
-    'NUMBER': r'\b\d+(?:[.,\']\d+)?\b',
+    'QUOTES': r'(\"(\\.|[^\"]){2,}\")|(\“(\\.|[^\”]){2,}\”)',
+    'URL': r'(?:https?:\/\/(?:www\.|(?!www))[^\s\.]+\.[^\s]{2,}|www\.[^\s]+\.[^\s]{2,})|(https?:[\S]*…)',
     'EMAIL': r'(?:^|(?<=[^\w@.)]))(?:[\w+-](?:\.(?!\.))?)*?[\w+-]@(?:\w-?)*?\w+(?:\.(?:[a-z]{2,})){1,3}(?:$|(?=\b))',
-    'INVALID_HASHTAG': r'#[^\w][\S]*',
-    'REPEAT_PUNCTS' : '([!?.]){2,}'
+    'PHONE': r'(?<![0-9])(?:\+\d{1,2}\s)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}(?![0-9])',
+    'T_HEAD': r'^(RT|HT|MT) @\w+: ',
+    'UNAME': r'\@\w+',
+    'NOO': r'(9\.11)|(9/11)|(11/9)|((?<= )911)',
+    'KKK': r'(KKK)|(kkk)',
+    'MONEY': r'(?:[$€£¢]\d+(?:[\.,\']\d+)?(?:[MmKkBb](?:n|(?:il(?:lion)?))?)?)|(?:\d+(?:[\.,\']\d+)?[$€£¢])',
+    'PERCENT': r"\b\d+(?:[\.,']\d+)?\b",
+    'NUMBER': r'\b\d+(?:[\.,\']\d+)?\b',
+    'TIME': r'(?:(?:\d+)?\.?\d+(?:AM|PM|am|pm|a\.m\.|p\.m\.))|(?:(?:[0-2]?[0-9]|[2][0-3]):(?:[0-5][0-9])(?::(?:[0-5][0-9]))?(?: ?(?:AM|PM|am|pm|a\.m\.|p\.m\.))?)',
+    'DATE': r'',
+    
+    'EMPHASIS': r'(?:\*\b\w+\b\*)',
+    'HASHTAG': r'\#+\b[\w\-\_]+\b',
+    'INVALID_HASHTAG': r'(\#+\s+)|(\#+[^\w\s]+)',
+    'REPEAT_PUNCTS': r'([!?.*]){2,}',
+    'CENSORED': r'(?:\b\w+\*+\w+\b)',
+    
+    'CAMEL_SPLIT': r'((?<=[a-z])[A-Z]|(?<!^)[A-Z](?=[a-z])|[0-9]+|(?<=[0-9\-\_])[A-Za-z]|[\-\_])'
 }
 
 tokenizer = TweetTokenizer()
+
+to_tag = ['URL', 'EMAIL', 'PHONE', 'T_HEAD', 'UNAME', 'NOO', 'KKK', 'MONEY', 'PERCENT', 'TIME', 'NUMBER', 'CENSORED']
 
 def unpack_contractions(text):
     """
@@ -53,48 +67,42 @@ def unpack_contractions(text):
     text = re.sub(r"(\b)([Yy])(?:'all|a'll)", r"\1\2ou all", text)
     return text
 
-def unpack_quotes(m):
-    return m.group().replace('"', '').replace('“', '').replace('”', '')
-
-def unpack_emphasis(m):
-    return m.group().replace('*', '')
-
 def remove_repeat_puncts(m):
     text = m.group()
     text = "".join(sorted(set(text), reverse=True))
     return text
 
-def unpack_number(m):
-    return 'NUMERIC_VALUE'
+def unpack_emphasis(m):
+    return m.group().replace('*', '')
 
-def unpack_email(m):
-    return "EMAIL_ADDRESS"
+def unpack_quotes(m):
+    return m.group().replace('"', ' ').replace('"', ' ').replace('“', ' ').replace('”', ' ')
+
 
 def clean_sentence(s):
     """
     Perform initial normalization on sentence.
     """
-    # unpack quotes
-    s = re.sub(regexes['QUOTES'], lambda x: unpack_quotes(x), s)
-    # remove url
-    s = re.sub(regexes['URL'], ' ', s)
-    # unpack contractions
-    s = unpack_contractions(s)
-    # remove tweets head (RT|MT|HT) and username
-    s = re.sub(regexes['HEAD'], ' ', s)
-    s = re.sub(regexes['UNAME'], ' ', s)
-    # unpack emphasis
-    s = re.sub(regexes['EMPHASIX'], lambda x: unpack_emphasis(x), s)
-    # unpack numeric value
-    s = re.sub(regexes['NUMBER'], lambda x: unpack_number(x), s)
-    # unpack email address
-    s = re.sub(regexes['EMPHASIX'], lambda x: unpack_email(x), s)
-    # remove repeat punctuations
+    s = re.sub(r' +', ' ', s.strip())
+    
+    # Part1: remove invalid or duplicated chars/segmentations
     s = re.sub(regexes['REPEAT_PUNCTS'], lambda x: remove_repeat_puncts(x), s)
-    # remove invalid hashtag
     s = re.sub(regexes['INVALID_HASHTAG'], ' ', s)
+    s = re.sub('&amp;', ' ', s)
+    
+    # Part2: unpack wrapped contents
+    s = re.sub(regexes['EMPHASIS'], lambda x: unpack_emphasis(x), s)
+    s = re.sub(regexes['QUOTES'], lambda x: unpack_quotes(x), s)
+    
+    # Part3: replace some categorial words with categorial tag
+    for t in to_tag:
+        s = re.sub(regexes[t], '<'+t+'>', s)
+    
+    # Part4: deal with hashtags
+    # For this moment, let's keep the hash tags as valid words.
+    
     # tokenize
     s = ' '.join(tokenizer.tokenize(s))
     # remove repeating spaces and leading/tailing spaces
-    s = re.sub(r' +', ' ', s).strip()
+    s = re.sub(r' +', ' ', s.strip())
     return s
