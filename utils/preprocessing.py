@@ -4,6 +4,7 @@ import string
 import re
 from nltk.tokenize import TweetTokenizer
 from time import time
+import unicodedata
 
 regexes = {
     'QUOTES': r'(\"(\\.|[^\"]){2,}\")|(\“(\\.|[^\”]){2,}\”)',
@@ -76,13 +77,16 @@ def unpack_emphasis(m):
     return m.group().replace('*', '')
 
 def unpack_quotes(m):
-    return m.group().replace('"', ' ').replace('"', ' ').replace('“', ' ').replace('”', ' ')
+    return m.group().replace('"', ' ').replace('"', ' ').replace(u'“', ' ').replace(u'”', ' ')
 
 
 def clean_sentence(s):
     """
     Perform initial normalization on sentence.
     """
+    #s = unicodedata.normalize('NFD', s)
+    #s = s.encode('utf-8', 'ignore')
+    s = s.decode("utf-8")
     s = re.sub(r' +', ' ', s.strip())
     
     # Part1: remove invalid or duplicated chars/segmentations
