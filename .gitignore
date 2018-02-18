@@ -2,3 +2,6 @@ cache/*
 corpus/*
 models/*
 *.pyc
+*.ipynb_checkpoints/*
+context2vec/*
+	

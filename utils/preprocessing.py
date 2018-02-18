@@ -98,26 +98,3 @@ def clean_sentence(s):
     # remove repeating spaces and leading/tailing spaces
     s = re.sub(r' +', ' ', s).strip()
     return s
-    
-
-def clean_corpus(f_in, f_out, head=0):
-    """
-    Clean a whole corpus file and write cleaned sentences line by line into the output file.
-    f_in: input (raw corpus) file path
-    f_out: output (cleaned corpus) file path
-    """
-    start = time()
-    print "Starting clean corpus..."
-    with open(f_in, 'r') as raw_file:
-        cleaned_file = open(f_out, 'w')
-        for i, line in enumerate(raw_file):
-            if i % 50000 == 0 and i > 0:
-                print "%d lines done..." % i
-            cleaned_l = clean_sentence(line)
-            if len(cleaned_l) > 0:
-                cleaned_file.write("%s\n" % cleaned_l.encode('utf-8'))
-            if head > 0 and i > head:
-                break
-        raw_file.close()
-        cleaned_file.close()
-    print "Corpus clean done in %0.3fs." % (time() - start)

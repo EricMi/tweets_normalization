@@ -2,6 +2,9 @@ mkdir ./cache
 mkdir ./corpus
 mkdir ./models
 
+# clone context2vec repo.
+git clone https://github.com/orenmel/context2vec.git
+
 # context2vector pre-trained models
 wget http://irsrv2.cs.biu.ac.il/downloads/context2vec/context2vec.mscc.model.package.tar.gz -P ./cache
 wget http://irsrv2.cs.biu.ac.il/downloads/context2vec/context2vec.ukwac.model.package.tar.gz -P ./cache
